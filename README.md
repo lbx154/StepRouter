@@ -17,7 +17,6 @@ Anonymous Authors
 ICML 2026 Submission
 
 - 📄 Paper: *link coming soon*
-- 📊 Project Page: *coming soon*
 
 ---
 
