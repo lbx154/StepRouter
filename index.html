@@ -2,10 +2,14 @@
 <html lang="en">
 
 <head>
+
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>StepRouter</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
 </head>
@@ -13,6 +17,8 @@
 <body>
 
 <div class="container">
+
+<!-- TITLE -->
 
 <h1 class="title">
 StepRouter: From Effort Priors to Utility Posteriors
@@ -22,41 +28,267 @@ StepRouter: From Effort Priors to Utility Posteriors
 Anonymous Authors
 </p>
 
+<p class="subtitle">
+Estimate reasoning step utility and route only high-value steps to the solver.
+</p>
+
+<!-- LINKS -->
+
 <div class="links">
 
-<a href="#">Paper</a>
-<a href="#">Code</a>
-<a href="#">Dataset</a>
+<a class="button" href="#">📄 Paper</a>
+
+<a class="button" href="#">💻 Code</a>
+
+<a class="button" href="#">📊 Dataset</a>
 
 </div>
 
 <!-- HERO ANIMATION -->
 
+<div class="hero">
+
 <div id="animation"></div>
+
+</div>
+
+<!-- ABSTRACT -->
 
 <h2>Abstract</h2>
 
 <p class="abstract">
-
-Large language models often generate many intermediate reasoning steps,
-but only a small fraction are truly useful.
-StepRouter estimates the utility of candidate reasoning steps
-and routes only the top-k high-value steps to the solver,
-improving reasoning accuracy while reducing token usage.
-
+Chain-of-Thought (CoT) and related reasoning paradigms rely on <em>historical tokens</em>—intermediate conclusions from prior steps.
+Not all historical tokens are equally useful, and the <em>lost in the middle</em> phenomenon makes indiscriminate accumulation harmful.
+We study how to rank and select historical tokens, organizing them at the granularity of <em>steps</em>, which manifest as lemmas in mathematics, TODOs in code, or other domain-specific units.
+As a first step, we compare two ways to rank candidate steps.
+The first is an <strong>effort prior</strong>, which favors steps that look expensive to verify.
+The second is an <strong>ex-post utility</strong> score, which measures how much a step improves the final answer per token, judged by a frontier model.
+Empirically, effort is nearly uncorrelated with true usefulness, while utility-based ranking substantially outperforms effort and other baselines at selecting high-value steps.
 </p>
+
+<p class="abstract">
+Despite the simplicity of these signals, we develop StepRouter, a lightweight posterior utility estimator that guides any backbone to rank steps by utility, routing only the top 20% for reuse.
+The results are surprisingly strong: StepRouter improves <em>all</em> tested models on several reasoning benchmarks, yielding +19.6% on LiveCodeBench with DeepSeek-R1, +23.2% with Qwen3-8B, and pushing GPT-5 to 97.2% on AIME.
+Fine-tuning Qwen3-8B with only 166 examples yields +12.2% on AIME (68.2% &rarr; 80.04%), demonstrating that models can internalize effective token utilization.
+</p>
+
+<!-- METHOD -->
 
 <h2>Method Overview</h2>
 
-<div id="method-animation"></div>
+<div class="method">
+
+<img src="Steprouter-page-1.png" class="figure" alt="StepRouter method overview">
+
+</div>
+
+<!-- RESULTS -->
 
 <h2>Results</h2>
 
-<img src="assets/teaser.png" class="figure">
+<div class="results">
+
+<table class="results-table">
+  <thead>
+    <tr>
+      <th rowspan="2">Backbone</th>
+      <th rowspan="2">Method (Top-20% routing)</th>
+      <th colspan="2">AIME (2025)</th>
+      <th colspan="2">GPQA-Diamond</th>
+      <th colspan="2">LiveCodeBench</th>
+    </tr>
+    <tr>
+      <th>Acc ↑</th>
+      <th>Tok ↓</th>
+      <th>Acc ↑</th>
+      <th>Tok ↓</th>
+      <th>Acc ↑</th>
+      <th>Tok ↓</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- DeepSeek-R1-0120 -->
+    <tr>
+      <td rowspan="6">DeepSeek-R1-0120</td>
+      <td>Direct (no routing)</td>
+      <td>70.42</td>
+      <td>21,392.45</td>
+      <td>68.52</td>
+      <td>14,835.26</td>
+      <td>70.00</td>
+      <td>17,642.14</td>
+    </tr>
+    <tr>
+      <td>Effort Prior (Sketch → Steps → Final)</td>
+      <td>75.51</td>
+      <td>23,686.24</td>
+      <td>75.12</td>
+      <td>18,260.26</td>
+      <td>81.06</td>
+      <td>20,491.14</td>
+    </tr>
+    <tr>
+      <td>Self-Consistency</td>
+      <td>71.39</td>
+      <td>57,103.53</td>
+      <td>71.57</td>
+      <td>41,451.42</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td>PRM (Qwen2.5-math-PRM)</td>
+      <td>76.47</td>
+      <td>22,582.43</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td>S1-like</td>
+      <td>58.21</td>
+      <td>25,814.46</td>
+      <td>61.46</td>
+      <td>16,451.61</td>
+      <td>65.39</td>
+      <td>20,215.63</td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>StepRouter (Utility Scorer)</strong></td>
+      <td><strong>80.04</strong></td>
+      <td><strong>18,582.43</strong></td>
+      <td><strong>77.11</strong></td>
+      <td><strong>13,942.45</strong></td>
+      <td><strong>89.61</strong></td>
+      <td><strong>14,294.53</strong></td>
+    </tr>
+
+    <!-- GPT-5 -->
+    <tr>
+      <td rowspan="6">GPT-5</td>
+      <td>Direct (no routing)</td>
+      <td>92.63</td>
+      <td>8,449</td>
+      <td>82.02</td>
+      <td>9,455</td>
+      <td>82.10</td>
+      <td>15,479</td>
+    </tr>
+    <tr>
+      <td>Effort Prior (Sketch → Steps → Final)</td>
+      <td>96.26</td>
+      <td>12,932</td>
+      <td>88.52</td>
+      <td>14,621</td>
+      <td>89.70</td>
+      <td>18,363</td>
+    </tr>
+    <tr>
+      <td>PRM (Qwen2.5-math-PRM)</td>
+      <td>95.42</td>
+      <td>11,462</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td>S1-like</td>
+      <td>--</td>
+      <td>--</td>
+      <td>80.52</td>
+      <td>10,471</td>
+      <td>81.53</td>
+      <td>16,365</td>
+    </tr>
+    <tr>
+      <td>Self-Consistency (3 samples)</td>
+      <td>94.52</td>
+      <td>23,691</td>
+      <td>85.12</td>
+      <td>29,450</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>StepRouter (Utility Scorer)</strong></td>
+      <td><strong>97.19</strong></td>
+      <td><strong>9,026</strong></td>
+      <td><strong>89.24</strong></td>
+      <td><strong>8,326</strong></td>
+      <td><strong>92.61</strong></td>
+      <td><strong>14,954</strong></td>
+    </tr>
+
+    <!-- Qwen3-8B -->
+    <tr>
+      <td rowspan="6">Qwen3-8B</td>
+      <td>Direct (no routing)</td>
+      <td>68.16</td>
+      <td>20,484.1</td>
+      <td>62.01</td>
+      <td>8,977.21</td>
+      <td>57.56</td>
+      <td>6,536</td>
+    </tr>
+    <tr>
+      <td>Effort Prior (Sketch → Steps → Final)</td>
+      <td>70.25</td>
+      <td>21,305.93</td>
+      <td>65.14</td>
+      <td>9,523.9</td>
+      <td>70.46</td>
+      <td>13,786</td>
+    </tr>
+    <tr>
+      <td>Self-Consistency (3 samples)</td>
+      <td>70.82</td>
+      <td>61,325.6</td>
+      <td>64.92</td>
+      <td>27,932</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td>PRM (Qwen2.5-math-PRM)</td>
+      <td>71.36</td>
+      <td>20,891.75</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td>S1-like</td>
+      <td>50.51</td>
+      <td>22,435.1</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr class="highlight-row">
+      <td><strong>StepRouter (Utility Scorer)</strong></td>
+      <td><strong>74.32</strong></td>
+      <td><strong>18,532</strong></td>
+      <td><strong>67.62</strong></td>
+      <td><strong>7,635.5</strong></td>
+      <td><strong>80.79</strong></td>
+      <td><strong>8,356</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
+<!-- CITATION -->
 
 <h2>Citation</h2>
 
-<pre>
+<div class="citation">
+
+<pre id="citation-text">
 
 @article{steprouter2026,
 title={StepRouter: From Effort Priors to Utility Posteriors},
@@ -66,9 +298,29 @@ year={2026}
 
 </pre>
 
+<button onclick="copyCitation()" class="copy-btn">
+Copy BibTex
+</button>
+
+</div>
+
 </div>
 
 <script src="animation.js"></script>
+
+<script>
+
+function copyCitation() {
+
+const text = document.getElementById("citation-text").innerText
+
+navigator.clipboard.writeText(text)
+
+alert("Citation copied!")
+
+}
+
+</script>
 
 </body>
 </html>
